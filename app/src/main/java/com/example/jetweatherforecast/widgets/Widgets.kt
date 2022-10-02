@@ -107,7 +107,7 @@ fun SunriseSunsetRow(data: Weather) {
 }
 
 @Composable
-fun HumidityWindPressureRow(data: Weather) {
+fun HumidityWindPressureRow(data: Weather, isMetric: Boolean) {
     Row(
         modifier = Modifier
             .padding(12.dp)
@@ -144,7 +144,7 @@ fun HumidityWindPressureRow(data: Weather) {
                 modifier = Modifier.size(20.dp)
             )
             Text(
-                text = " ${data.list.first().speed} mph",
+                text = " ${data.list.first().speed} " + if (isMetric) "m/s" else "mph",
                 style = MaterialTheme.typography.caption
             )
         }

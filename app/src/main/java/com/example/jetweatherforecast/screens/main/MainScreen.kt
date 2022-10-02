@@ -1,15 +1,12 @@
 package com.example.jetweatherforecast.screens.main
 
-import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -18,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.bawp.jetweatherforecast.screens.settings.SettingsViewModel
 import com.example.jetweatherforecast.data.DataOrException
 import com.example.jetweatherforecast.model.Weather
 import com.example.jetweatherforecast.navigation.WeatherScreens
@@ -29,24 +27,40 @@ import com.example.jetweatherforecast.widgets.*
 fun MainScreen(
     navController: NavController,
     mainViewModel: MainViewModel = hiltViewModel(),
+    settingsViewModel: SettingsViewModel = hiltViewModel(),
     city: String?
 ){
-    Log.d("TAG", "MainScreen: $city")
-    val weatherData: State<DataOrException<Weather, Boolean, Exception>> =
-        produceState<DataOrException<Weather, Boolean, Exception>>(
-        initialValue = DataOrException(loading = true)){
-        value = mainViewModel.getWeatherData(city!!)
+    val unitFromDb = settingsViewModel.unitList.collectAsState().value
+    var unit by remember {
+        mutableStateOf("metric")
+    }
+    var isMetric by remember {
+        mutableStateOf(false)
     }
 
-    if (weatherData.value.loading == true) {
-        CircularProgressIndicator()
-    } else if (weatherData.value.data != null) {
-        MainScaffold(weather = weatherData.value.data!!, navController)
+    if (!unitFromDb.isNullOrEmpty()) {
+        unit = unitFromDb[0].unit.split(" ")[0].lowercase()
+        isMetric = unit == "metric"
+        val weatherData: State<DataOrException<Weather, Boolean, Exception>> =
+            produceState<DataOrException<Weather, Boolean, Exception>>(
+                initialValue = DataOrException(loading = true)){
+                value = mainViewModel.getWeatherData(city!!, unit)
+            }
+
+        if (weatherData.value.loading == true) {
+            CircularProgressIndicator()
+        } else if (weatherData.value.data != null) {
+            MainScaffold(weather = weatherData.value.data!!, navController, isMetric)
+        }
+    } else {
+
     }
+
+
 }
 
 @Composable
-fun MainScaffold(weather: Weather, navController: NavController) {
+fun MainScaffold(weather: Weather, navController: NavController, isMetric: Boolean) {
 
     Scaffold(topBar = {
         WeatherAppBar(
@@ -56,16 +70,15 @@ fun MainScaffold(weather: Weather, navController: NavController) {
                 navController.navigate(WeatherScreens.SearchScreen.name)
             },
             elevation = 5.dp) {
-            Log.d("TAG", "MainScaffold: Button Clicked")
         }
     }) {
-        MainContent(data = weather)
+        MainContent(data = weather, isMetric)
     }
     
 }
 
 @Composable
-fun MainContent(data: Weather) {
+fun MainContent(data: Weather, isMetric: Boolean) {
     val imageUrl = "https://openweathermap.org/img/wn/${data.list[0].weather[0].icon}.png"
     Column(
         modifier = Modifier
@@ -105,7 +118,7 @@ fun MainContent(data: Weather) {
                 )
             }
         }
-        HumidityWindPressureRow(data)
+        HumidityWindPressureRow(data, isMetric)
         Divider()
         SunriseSunsetRow(data)
         WeekForecast(data)
